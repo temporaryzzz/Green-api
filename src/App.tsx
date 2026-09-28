@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
 import { createGreenApiClient } from './api/greenApi'
 
 type Credentials = { idInstance: string; apiTokenInstance: string }
@@ -41,6 +40,7 @@ function App() {
   const [idInstance, setIdInstance] = useState(credentials?.idInstance ?? '')
   const [apiTokenInstance, setApiTokenInstance] = useState(credentials?.apiTokenInstance ?? '')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [isChatsOpen, setIsChatsOpen] = useState(false)
   const phoneNumberRef = useRef('')
   const [messageText, setMessageText] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -115,8 +115,7 @@ function App() {
     }
   }, [apiClient, chats])
 
-  function handleAuthorize(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function handleAuthorize() {
     if (!idInstance.trim() || !apiTokenInstance.trim()) return
     const nextCredentials = {
       idInstance: idInstance.trim(),
@@ -139,8 +138,7 @@ function App() {
     setPhoneNumber('')
   }
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handleSend() {
     if (!apiClient || !phoneNumber || !messageText.trim()) return
 
     setIsSending(true)
@@ -184,7 +182,13 @@ function App() {
   if (!credentials) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0e1621] p-5 text-white">
-        <form className="flex w-full max-w-96 flex-col gap-4 bg-[#17212b] p-6" onSubmit={handleAuthorize}>
+        <form
+          className="flex w-full max-w-96 flex-col gap-4 bg-[#17212b] p-6"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleAuthorize()
+          }}
+        >
           <h1 className="text-[#2aabee]">Telegram / Green-API</h1>
           <p className="text-slate-400">Авторизация</p>
           <label className="text-slate-300">
@@ -220,9 +224,14 @@ function App() {
   return (
     <main className="h-screen bg-[#0e1621] text-white">
       <div className="flex h-full overflow-hidden">
-        <aside className="flex w-64 flex-col overflow-auto bg-[#17212b] p-4">
+        <aside
+          className={`${isChatsOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-20 flex w-64 flex-col overflow-auto bg-[#17212b] p-4 transition-transform lg:static lg:translate-x-0`}
+        >
           <div className="flex items-center justify-between">
             <h1 className="text-[#2aabee]">Green-API Telegram</h1>
+            <button className="text-white lg:hidden" onClick={() => setIsChatsOpen(false)}>
+              ×
+            </button>
           </div>
           <h2 className="p-4 text-[#2aabee]">Чаты ({chats.length})</h2>
           <div className="flex flex-col">
@@ -241,6 +250,7 @@ function App() {
                     onClick={() => {
                       phoneNumberRef.current = normalizePhoneNumber(String(chat.phoneNumber))
                       setPhoneNumber(String(chat.phoneNumber))
+                      setIsChatsOpen(false)
                       setStatus('')
                       setMessages([])
                     }}
@@ -256,9 +266,19 @@ function App() {
             Изменить credentials
           </button>
         </aside>
+        {isChatsOpen && (
+          <button
+            className="fixed inset-0 z-10 bg-black/60 lg:hidden"
+            onClick={() => setIsChatsOpen(false)}
+            aria-label="Закрыть список чатов"
+          />
+        )}
 
         <section className="flex min-w-0 flex-1 flex-col bg-[#0e1621]">
           <header className="flex h-16 items-center gap-4 bg-[#17212b] p-4">
+            <button className="text-xl lg:hidden" onClick={() => setIsChatsOpen(true)}>
+              ☰
+            </button>
             <h2>{titleChat}</h2>
             <span className="ml-auto text-slate-400">{status}</span>
           </header>
@@ -282,7 +302,13 @@ function App() {
                 ))
               )}
             </div>
-            <form className="flex flex-col gap-2 bg-[#17212b] p-4" onSubmit={handleSend}>
+            <form
+              className="flex flex-col gap-2 bg-[#17212b] p-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleSend()
+              }}
+            >
               <input
                 className="rounded-md bg-[#0e1621] p-3 text-white outline-[#2aabee]"
                 value={phoneNumber}
